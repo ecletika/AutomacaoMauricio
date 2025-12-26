@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Menu, X, Zap } from "lucide-react";
 
@@ -41,12 +42,16 @@ export function Header() {
 
           {/* CTA Button */}
           <div className="hidden lg:flex items-center gap-3">
-            <Button variant="ghost" size="sm">
-              Entrar
-            </Button>
-            <Button variant="hero" size="default">
-              Começar grátis
-            </Button>
+            <Link to="/auth">
+              <Button variant="ghost" size="sm">
+                Entrar
+              </Button>
+            </Link>
+            <Link to="/auth">
+              <Button variant="hero" size="default">
+                Começar grátis
+              </Button>
+            </Link>
           </div>
 
           {/* Mobile Menu Button */}
@@ -78,12 +83,16 @@ export function Header() {
                 </a>
               ))}
               <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-border/50">
-                <Button variant="ghost" className="w-full justify-center">
-                  Entrar
-                </Button>
-                <Button variant="hero" className="w-full justify-center">
-                  Começar grátis
-                </Button>
+                <Link to="/auth" onClick={() => setMobileMenuOpen(false)}>
+                  <Button variant="ghost" className="w-full justify-center">
+                    Entrar
+                  </Button>
+                </Link>
+                <Link to="/auth" onClick={() => setMobileMenuOpen(false)}>
+                  <Button variant="hero" className="w-full justify-center">
+                    Começar grátis
+                  </Button>
+                </Link>
               </div>
             </nav>
           </div>
