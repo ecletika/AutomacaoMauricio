@@ -44,7 +44,7 @@ const integrationTypes = [
   { type: "gmail", name: "Gmail", icon: Mail, color: "bg-[#EA4335]", available: false },
   { type: "google_calendar", name: "Google Calendar", icon: Calendar, color: "bg-[#4285F4]", available: false },
   { type: "github", name: "GitHub", icon: Github, color: "bg-foreground", available: false },
-  { type: "whatsapp", name: "WhatsApp", icon: MessageSquare, color: "bg-[#25D366]", available: false },
+  { type: "whatsapp", name: "WhatsApp", icon: MessageSquare, color: "bg-[#25D366]", available: true },
   { type: "zoho", name: "Zoho", icon: FileText, color: "bg-[#C8202B]", available: false },
   { type: "microsoft365", name: "Microsoft 365", icon: Cloud, color: "bg-[#0078D4]", available: false },
   { type: "aws", name: "AWS", icon: Cloud, color: "bg-[#FF9900]", available: false },
@@ -286,7 +286,13 @@ export default function Integrations() {
                     className={`cursor-pointer transition-all hover:shadow-md ${
                       integration.available ? "hover:border-primary/50" : "opacity-60"
                     }`}
-                    onClick={() => integration.available && setActiveTab(integration.type)}
+                    onClick={() => {
+                      if (integration.type === "whatsapp") {
+                        navigate("/whatsapp-settings");
+                      } else if (integration.available) {
+                        setActiveTab(integration.type);
+                      }
+                    }}
                   >
                     <CardContent className="p-4 flex flex-col items-center gap-3 text-center">
                       <div className={`w-12 h-12 rounded-xl ${integration.color} flex items-center justify-center`}>
