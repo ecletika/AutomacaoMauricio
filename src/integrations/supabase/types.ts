@@ -44,6 +44,48 @@ export type Database = {
         }
         Relationships: []
       }
+      integrations: {
+        Row: {
+          config: Json | null
+          created_at: string
+          credentials: Json | null
+          error_message: string | null
+          id: string
+          last_sync_at: string | null
+          name: string
+          status: Database["public"]["Enums"]["integration_status"]
+          type: Database["public"]["Enums"]["integration_type"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          config?: Json | null
+          created_at?: string
+          credentials?: Json | null
+          error_message?: string | null
+          id?: string
+          last_sync_at?: string | null
+          name: string
+          status?: Database["public"]["Enums"]["integration_status"]
+          type: Database["public"]["Enums"]["integration_type"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          config?: Json | null
+          created_at?: string
+          credentials?: Json | null
+          error_message?: string | null
+          id?: string
+          last_sync_at?: string | null
+          name?: string
+          status?: Database["public"]["Enums"]["integration_status"]
+          type?: Database["public"]["Enums"]["integration_type"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -74,6 +116,110 @@ export type Database = {
         }
         Relationships: []
       }
+      workflow_logs: {
+        Row: {
+          error_message: string | null
+          executed_at: string
+          id: string
+          input_data: Json | null
+          output_data: Json | null
+          status: string
+          user_id: string
+          workflow_id: string
+        }
+        Insert: {
+          error_message?: string | null
+          executed_at?: string
+          id?: string
+          input_data?: Json | null
+          output_data?: Json | null
+          status: string
+          user_id: string
+          workflow_id: string
+        }
+        Update: {
+          error_message?: string | null
+          executed_at?: string
+          id?: string
+          input_data?: Json | null
+          output_data?: Json | null
+          status?: string
+          user_id?: string
+          workflow_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_logs_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "workflows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workflows: {
+        Row: {
+          action_config: Json | null
+          action_integration_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          last_run_at: string | null
+          name: string
+          run_count: number
+          trigger_config: Json | null
+          trigger_integration_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          action_config?: Json | null
+          action_integration_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          last_run_at?: string | null
+          name: string
+          run_count?: number
+          trigger_config?: Json | null
+          trigger_integration_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          action_config?: Json | null
+          action_integration_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          last_run_at?: string | null
+          name?: string
+          run_count?: number
+          trigger_config?: Json | null
+          trigger_integration_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflows_action_integration_id_fkey"
+            columns: ["action_integration_id"]
+            isOneToOne: false
+            referencedRelation: "integrations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workflows_trigger_integration_id_fkey"
+            columns: ["trigger_integration_id"]
+            isOneToOne: false
+            referencedRelation: "integrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -82,7 +228,18 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      integration_status: "active" | "inactive" | "error" | "pending"
+      integration_type:
+        | "webhook"
+        | "telegram"
+        | "gmail"
+        | "google_calendar"
+        | "github"
+        | "whatsapp"
+        | "zoho"
+        | "microsoft365"
+        | "aws"
+        | "postgresql"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -209,6 +366,20 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      integration_status: ["active", "inactive", "error", "pending"],
+      integration_type: [
+        "webhook",
+        "telegram",
+        "gmail",
+        "google_calendar",
+        "github",
+        "whatsapp",
+        "zoho",
+        "microsoft365",
+        "aws",
+        "postgresql",
+      ],
+    },
   },
 } as const
