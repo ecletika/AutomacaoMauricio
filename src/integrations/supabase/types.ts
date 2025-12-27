@@ -116,6 +116,116 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_config: {
+        Row: {
+          business_context: string | null
+          created_at: string
+          escalation_keywords: string[] | null
+          id: string
+          is_bot_active: boolean
+          updated_at: string
+          user_id: string
+          welcome_message: string | null
+        }
+        Insert: {
+          business_context?: string | null
+          created_at?: string
+          escalation_keywords?: string[] | null
+          id?: string
+          is_bot_active?: boolean
+          updated_at?: string
+          user_id: string
+          welcome_message?: string | null
+        }
+        Update: {
+          business_context?: string | null
+          created_at?: string
+          escalation_keywords?: string[] | null
+          id?: string
+          is_bot_active?: boolean
+          updated_at?: string
+          user_id?: string
+          welcome_message?: string | null
+        }
+        Relationships: []
+      }
+      whatsapp_conversations: {
+        Row: {
+          assigned_agent_id: string | null
+          context: Json | null
+          created_at: string
+          current_intent: Database["public"]["Enums"]["detected_intent"] | null
+          customer_name: string | null
+          id: string
+          last_message_at: string | null
+          phone_number: string
+          status: Database["public"]["Enums"]["conversation_status"]
+          updated_at: string
+        }
+        Insert: {
+          assigned_agent_id?: string | null
+          context?: Json | null
+          created_at?: string
+          current_intent?: Database["public"]["Enums"]["detected_intent"] | null
+          customer_name?: string | null
+          id?: string
+          last_message_at?: string | null
+          phone_number: string
+          status?: Database["public"]["Enums"]["conversation_status"]
+          updated_at?: string
+        }
+        Update: {
+          assigned_agent_id?: string | null
+          context?: Json | null
+          created_at?: string
+          current_intent?: Database["public"]["Enums"]["detected_intent"] | null
+          customer_name?: string | null
+          id?: string
+          last_message_at?: string | null
+          phone_number?: string
+          status?: Database["public"]["Enums"]["conversation_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      whatsapp_messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          intent: Database["public"]["Enums"]["detected_intent"] | null
+          metadata: Json | null
+          sender: Database["public"]["Enums"]["message_sender"]
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          intent?: Database["public"]["Enums"]["detected_intent"] | null
+          metadata?: Json | null
+          sender: Database["public"]["Enums"]["message_sender"]
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          intent?: Database["public"]["Enums"]["detected_intent"] | null
+          metadata?: Json | null
+          sender?: Database["public"]["Enums"]["message_sender"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workflow_logs: {
         Row: {
           error_message: string | null
@@ -228,6 +338,15 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
+      conversation_status: "active" | "waiting_human" | "with_human" | "closed"
+      detected_intent:
+        | "greeting"
+        | "support"
+        | "financial"
+        | "sales"
+        | "human_request"
+        | "unknown"
+        | "farewell"
       integration_status: "active" | "inactive" | "error" | "pending"
       integration_type:
         | "webhook"
@@ -240,6 +359,7 @@ export type Database = {
         | "microsoft365"
         | "aws"
         | "postgresql"
+      message_sender: "user" | "bot" | "agent"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -367,6 +487,16 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      conversation_status: ["active", "waiting_human", "with_human", "closed"],
+      detected_intent: [
+        "greeting",
+        "support",
+        "financial",
+        "sales",
+        "human_request",
+        "unknown",
+        "farewell",
+      ],
       integration_status: ["active", "inactive", "error", "pending"],
       integration_type: [
         "webhook",
@@ -380,6 +510,7 @@ export const Constants = {
         "aws",
         "postgresql",
       ],
+      message_sender: ["user", "bot", "agent"],
     },
   },
 } as const
