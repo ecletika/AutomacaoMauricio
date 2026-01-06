@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Integrations from "./pages/Integrations";
+import WhatsAppHub from "./pages/WhatsAppHub";
 import WhatsAppSettings from "./pages/WhatsAppSettings";
 import WhatsAppAttendance from "./pages/WhatsAppAttendance";
 import NotFound from "./pages/NotFound";
@@ -26,6 +27,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/integrations" element={<Integrations />} />
+            <Route path="/whatsapp" element={<WhatsAppHub />} />
             <Route path="/whatsapp-settings" element={<WhatsAppSettings />} />
             <Route path="/whatsapp-attendance" element={<WhatsAppAttendance />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
