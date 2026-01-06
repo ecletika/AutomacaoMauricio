@@ -1,55 +1,44 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { 
-  Zap, 
-  LogOut, 
-  Plus, 
-  Trash2, 
+  MessageSquare, 
+  Settings, 
+  Bot, 
   Users, 
-  LayoutDashboard,
-  Settings,
-  Mail,
-  Building2,
-  Puzzle
+  TrendingUp,
+  Clock,
+  CheckCircle,
+  AlertCircle,
+  LogOut,
+  Loader2
 } from "lucide-react";
-import { z } from "zod";
 
-interface Contact {
-  id: string;
-  name: string;
-  email: string;
-  company: string | null;
-  message: string | null;
-  created_at: string;
+interface Stats {
+  totalConversations: number;
+  activeConversations: number;
+  waitingHuman: number;
+  closedToday: number;
+  avgResponseTime: string;
+  botResolutionRate: number;
 }
-
-const contactSchema = z.object({
-  name: z.string().trim().min(1, "Nome é obrigatório").max(100, "Nome muito longo"),
-  email: z.string().trim().email("Email inválido").max(255, "Email muito longo"),
-  company: z.string().trim().max(100, "Empresa muito longo").optional(),
-  message: z.string().trim().max(1000, "Mensagem muito longa").optional(),
-});
 
 export default function Dashboard() {
   const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
-  const [contacts, setContacts] = useState<Contact[]>([]);
-  const [isAddingContact, setIsAddingContact] = useState(false);
-  const [isLoadingContacts, setIsLoadingContacts] = useState(true);
-  const [newContact, setNewContact] = useState({
-    name: "",
-    email: "",
-    company: "",
-    message: "",
+  const [stats, setStats] = useState<Stats>({
+    totalConversations: 0,
+    activeConversations: 0,
+    waitingHuman: 0,
+    closedToday: 0,
+    avgResponseTime: "0min",
+    botResolutionRate: 0,
   });
+  const [loadingStats, setLoadingStats] = useState(true);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -59,352 +48,237 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (user) {
-      fetchContacts();
+      fetchStats();
     }
   }, [user]);
 
-  const fetchContacts = async () => {
+  const fetchStats = async () => {
     try {
-      const { data, error } = await supabase
-        .from("contacts")
-        .select("*")
-        .order("created_at", { ascending: false });
+      // Get all conversations
+      const { data: conversations } = await supabase
+        .from("whatsapp_conversations")
+        .select("*");
 
-      if (error) throw error;
-      setContacts(data || []);
-    } catch (error) {
-      console.error("Error fetching contacts:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível carregar os contatos.",
-        variant: "destructive",
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const totalConversations = conversations?.length || 0;
+      const activeConversations = conversations?.filter(c => c.status === "active").length || 0;
+      const waitingHuman = conversations?.filter(c => c.status === "waiting_human").length || 0;
+      const closedToday = conversations?.filter(c => {
+        const closedDate = new Date(c.updated_at);
+        return c.status === "closed" && closedDate >= today;
+      }).length || 0;
+
+      // Calculate bot resolution rate (conversations closed without human intervention)
+      const botResolved = conversations?.filter(c => 
+        c.status === "closed" && !c.assigned_agent_id
+      ).length || 0;
+      const botResolutionRate = totalConversations > 0 
+        ? Math.round((botResolved / totalConversations) * 100) 
+        : 0;
+
+      setStats({
+        totalConversations,
+        activeConversations,
+        waitingHuman,
+        closedToday,
+        avgResponseTime: "< 1min",
+        botResolutionRate,
       });
+    } catch (error) {
+      console.error("Error fetching stats:", error);
     } finally {
-      setIsLoadingContacts(false);
+      setLoadingStats(false);
     }
-  };
-
-  const handleAddContact = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    const validation = contactSchema.safeParse(newContact);
-    if (!validation.success) {
-      toast({
-        title: "Erro de validação",
-        description: validation.error.errors[0].message,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      const { error } = await supabase.from("contacts").insert({
-        user_id: user?.id,
-        name: newContact.name,
-        email: newContact.email,
-        company: newContact.company || null,
-        message: newContact.message || null,
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Sucesso!",
-        description: "Contato adicionado com sucesso.",
-      });
-
-      setNewContact({ name: "", email: "", company: "", message: "" });
-      setIsAddingContact(false);
-      fetchContacts();
-    } catch (error) {
-      console.error("Error adding contact:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível adicionar o contato.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleDeleteContact = async (id: string) => {
-    try {
-      const { error } = await supabase.from("contacts").delete().eq("id", id);
-      if (error) throw error;
-
-      toast({
-        title: "Sucesso!",
-        description: "Contato removido com sucesso.",
-      });
-
-      fetchContacts();
-    } catch (error) {
-      console.error("Error deleting contact:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível remover o contato.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate("/");
   };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Sidebar */}
-      <aside className="fixed left-0 top-0 bottom-0 w-64 bg-card border-r border-border/50 p-4 hidden lg:block">
-        <div className="flex items-center gap-2 mb-8">
-          <div className="w-9 h-9 rounded-xl gradient-cta flex items-center justify-center shadow-md">
-            <Zap className="w-5 h-5 text-primary-foreground" />
+      {/* Header */}
+      <header className="border-b border-border bg-card/50 backdrop-blur-sm">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <MessageSquare className="w-6 h-6 text-[#25D366]" />
+              WhatsApp Dashboard
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Bem-vindo, {user?.email}
+            </p>
           </div>
-          <span className="text-xl font-bold text-foreground">FlowSync</span>
-        </div>
-
-        <nav className="space-y-1">
-          <a
-            href="#"
-            className="flex items-center gap-3 px-3 py-2 rounded-lg bg-primary/10 text-primary font-medium"
-          >
-            <LayoutDashboard className="w-5 h-5" />
-            Dashboard
-          </a>
-          <a
-            href="#"
-            className="flex items-center gap-3 px-3 py-2 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-          >
-            <Users className="w-5 h-5" />
-            Contatos
-          </a>
-          <a
-            onClick={() => navigate("/integrations")}
-            className="flex items-center gap-3 px-3 py-2 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
-          >
-            <Puzzle className="w-5 h-5" />
-            Integrações
-          </a>
-          <a
-            href="#"
-            className="flex items-center gap-3 px-3 py-2 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-          >
-            <Settings className="w-5 h-5" />
-            Configurações
-          </a>
-        </nav>
-
-        <div className="absolute bottom-4 left-4 right-4">
-          <Button
-            variant="ghost"
-            className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive"
-            onClick={handleSignOut}
-          >
-            <LogOut className="w-5 h-5" />
+          <Button variant="outline" onClick={signOut}>
+            <LogOut className="w-4 h-4 mr-2" />
             Sair
           </Button>
         </div>
-      </aside>
-
-      {/* Mobile header */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-card border-b border-border/50 px-4 h-16 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg gradient-cta flex items-center justify-center">
-            <Zap className="w-4 h-4 text-primary-foreground" />
-          </div>
-          <span className="font-bold text-foreground">FlowSync</span>
-        </div>
-        <Button variant="ghost" size="sm" onClick={handleSignOut}>
-          <LogOut className="w-5 h-5" />
-        </Button>
       </header>
 
-      {/* Main content */}
-      <main className="lg:ml-64 pt-16 lg:pt-0">
-        <div className="p-6 lg:p-8">
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-            <div>
-              <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Dashboard</h1>
-              <p className="text-muted-foreground">
-                Olá, {user?.user_metadata?.full_name || user?.email}
-              </p>
-            </div>
-            <Button variant="hero" onClick={() => setIsAddingContact(true)}>
-              <Plus className="w-4 h-4 mr-2" />
-              Novo Contato
-            </Button>
-          </div>
+      <main className="container mx-auto px-4 py-8">
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total de Conversas</CardTitle>
+              <MessageSquare className="w-4 h-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.totalConversations}</div>
+              <p className="text-xs text-muted-foreground">Todas as conversas</p>
+            </CardContent>
+          </Card>
 
-          {/* Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-            <div className="bg-card border border-border/50 rounded-xl p-6">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Users className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground">{contacts.length}</p>
-                  <p className="text-sm text-muted-foreground">Contatos</p>
-                </div>
-              </div>
-            </div>
-            <div className="bg-card border border-border/50 rounded-xl p-6">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
-                  <Zap className="w-5 h-5 text-accent-foreground" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground">0</p>
-                  <p className="text-sm text-muted-foreground">Workflows</p>
-                </div>
-              </div>
-            </div>
-            <div className="bg-card border border-border/50 rounded-xl p-6">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-secondary/50 flex items-center justify-center">
-                  <Mail className="w-5 h-5 text-secondary-foreground" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground">0</p>
-                  <p className="text-sm text-muted-foreground">Emails enviados</p>
-                </div>
-              </div>
-            </div>
-          </div>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Conversas Ativas</CardTitle>
+              <Bot className="w-4 h-4 text-blue-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.activeConversations}</div>
+              <p className="text-xs text-muted-foreground">Sendo atendidas pelo bot</p>
+            </CardContent>
+          </Card>
 
-          {/* Add Contact Modal */}
-          {isAddingContact && (
-            <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
-              <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md shadow-xl animate-scale-in">
-                <h2 className="text-xl font-bold text-foreground mb-4">Novo Contato</h2>
-                <form onSubmit={handleAddContact} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="contactName">Nome *</Label>
-                    <Input
-                      id="contactName"
-                      value={newContact.name}
-                      onChange={(e) => setNewContact({ ...newContact, name: e.target.value })}
-                      placeholder="Nome do contato"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="contactEmail">Email *</Label>
-                    <Input
-                      id="contactEmail"
-                      type="email"
-                      value={newContact.email}
-                      onChange={(e) => setNewContact({ ...newContact, email: e.target.value })}
-                      placeholder="email@exemplo.com"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="contactCompany">Empresa</Label>
-                    <Input
-                      id="contactCompany"
-                      value={newContact.company}
-                      onChange={(e) => setNewContact({ ...newContact, company: e.target.value })}
-                      placeholder="Nome da empresa"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="contactMessage">Mensagem</Label>
-                    <Textarea
-                      id="contactMessage"
-                      value={newContact.message}
-                      onChange={(e) => setNewContact({ ...newContact, message: e.target.value })}
-                      placeholder="Adicione uma nota..."
-                      rows={3}
-                    />
-                  </div>
-                  <div className="flex gap-3 pt-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="flex-1"
-                      onClick={() => setIsAddingContact(false)}
-                    >
-                      Cancelar
-                    </Button>
-                    <Button type="submit" variant="hero" className="flex-1">
-                      Adicionar
-                    </Button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Aguardando Atendimento</CardTitle>
+              <AlertCircle className="w-4 h-4 text-yellow-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-yellow-500">{stats.waitingHuman}</div>
+              <p className="text-xs text-muted-foreground">Precisam de atendente</p>
+            </CardContent>
+          </Card>
 
-          {/* Contacts List */}
-          <div className="bg-card border border-border/50 rounded-xl overflow-hidden">
-            <div className="px-6 py-4 border-b border-border/50">
-              <h2 className="font-semibold text-foreground">Seus Contatos</h2>
-            </div>
-            {isLoadingContacts ? (
-              <div className="p-8 text-center">
-                <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full mx-auto" />
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Encerradas Hoje</CardTitle>
+              <CheckCircle className="w-4 h-4 text-green-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.closedToday}</div>
+              <p className="text-xs text-muted-foreground">Conversas finalizadas</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Tempo Médio</CardTitle>
+              <Clock className="w-4 h-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.avgResponseTime}</div>
+              <p className="text-xs text-muted-foreground">Resposta do bot</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Taxa de Resolução</CardTitle>
+              <TrendingUp className="w-4 h-4 text-green-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.botResolutionRate}%</div>
+              <p className="text-xs text-muted-foreground">Resolvidas pelo bot</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate("/whatsapp-attendance")}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="w-5 h-5 text-[#25D366]" />
+                Painel de Atendimento
+              </CardTitle>
+              <CardDescription>
+                Veja e responda conversas que precisam de atendimento humano
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {stats.waitingHuman > 0 && (
+                <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">
+                  {stats.waitingHuman} aguardando
+                </Badge>
+              )}
+              {stats.waitingHuman === 0 && (
+                <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
+                  Nenhuma conversa aguardando
+                </Badge>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate("/whatsapp-settings")}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Settings className="w-5 h-5" />
+                Configurações do Bot
+              </CardTitle>
+              <CardDescription>
+                Configure mensagens automáticas, contexto do negócio e mais
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">
+                Configurar
+              </Badge>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Instructions */}
+        <Card className="mt-8">
+          <CardHeader>
+            <CardTitle>Como Começar</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex gap-3">
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
+                1
               </div>
-            ) : contacts.length === 0 ? (
-              <div className="p-8 text-center">
-                <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">Nenhum contato ainda.</p>
+              <div>
+                <h3 className="font-semibold mb-1">Configure o Bot</h3>
                 <p className="text-sm text-muted-foreground">
-                  Clique em "Novo Contato" para adicionar.
+                  Acesse as configurações e personalize as mensagens automáticas e o contexto do seu negócio.
                 </p>
               </div>
-            ) : (
-              <div className="divide-y divide-border/50">
-                {contacts.map((contact) => (
-                  <div
-                    key={contact.id}
-                    className="px-6 py-4 flex items-center justify-between hover:bg-accent/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                        <span className="text-sm font-medium text-primary">
-                          {contact.name.charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                      <div>
-                        <p className="font-medium text-foreground">{contact.name}</p>
-                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Mail className="w-3 h-3" />
-                            {contact.email}
-                          </span>
-                          {contact.company && (
-                            <span className="flex items-center gap-1">
-                              <Building2 className="w-3 h-3" />
-                              {contact.company}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-muted-foreground hover:text-destructive"
-                      onClick={() => handleDeleteContact(contact.id)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                ))}
+            </div>
+
+            <div className="flex gap-3">
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
+                2
               </div>
-            )}
-          </div>
-        </div>
+              <div>
+                <h3 className="font-semibold mb-1">Conecte seu WhatsApp</h3>
+                <p className="text-sm text-muted-foreground">
+                  Configure o webhook no seu provedor de WhatsApp (Meta, Twilio, Z-API) apontando para a URL fornecida nas configurações.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
+                3
+              </div>
+              <div>
+                <h3 className="font-semibold mb-1">Comece a Atender</h3>
+                <p className="text-sm text-muted-foreground">
+                  O bot responderá automaticamente. Quando necessário, você será notificado para atendimento humano no painel.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </main>
     </div>
   );
